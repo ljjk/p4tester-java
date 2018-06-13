@@ -1,0 +1,27 @@
+<vn> <router name="hous">
+
+    Routing table: default.inet
+    Internet:
+    Destination        Type RtRef Next hop           Type Index NhRef Netif
+    default            perm     1                    rjct    36     2
+    0.0.0.0/32         perm     0                    dscd    34     8
+    1.8.1.0/24         user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.8.0/24         user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.101.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.102.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.150.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.151.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.152.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.153.0/24       user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.9.21.0/24        user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0
+    1.8.0.0/16        user     0                    indr 1048604  3910
+    64.57.28.96        ucst  1073    62 xe-0/1/0.0

@@ -13,12 +13,14 @@ public class P4TesterBDD {
     private int n;
     private BDD bdd;
     private int trueBDD;
+    private int lock;
 
     P4TesterBDD(int n) {
+        this.lock = 0;
         this.vars = new ArrayList<>();
         this.notVars = new ArrayList<>();
         this.n = n;
-        bdd = new BDD(1000, 1000);
+        bdd = new BDD(20000000, 1000000);
         for (int i = 0; i < n; i++) {
             int var = bdd.createVar();
             vars.add(var);
@@ -33,6 +35,15 @@ public class P4TesterBDD {
         }
     }
 
+    public void tryLock() {
+        // while(this.lock == 1);
+        this.lock = 1;
+    }
+
+    public void releaseLock() {
+        this.lock = 0;
+    }
+
     public int getVar(int i) {
         return vars.get(i);
     }
@@ -42,35 +53,60 @@ public class P4TesterBDD {
     }
 
     public boolean isOverlap(int a, int b) {
+        this.tryLock();
         int var = bdd.and(a, b);
-        return bdd.oneSat(var) != 0;
+        boolean sat =  bdd.oneSat(var) != 0;
+        this.bdd.deref(var);
+        this.releaseLock();
+        return sat;
     }
 
     public boolean isSubset(int a, int b) {
-        int var = bdd.not(b);
-        var = bdd.and(a, var);
-        return  bdd.oneSat(var) == 0;
+        this.tryLock();
+        int var1 = bdd.not(b);
+        int var2 = bdd.and(a, var1);
+        boolean sat = (bdd.oneSat(var2) == 0);
+        this.bdd.deref(var1);
+        this.bdd.deref(var2);
+        this.releaseLock();
+        return sat;
     }
 
     public int or (int a, int b) {
-        return bdd.or(a, b);
+        this.tryLock();
+        int var = bdd.or(a, b);
+        this.releaseLock();
+        return var;
     }
 
     public int and (int a, int b) {
-        return bdd.and(a, b);
+        this.tryLock();
+        int var = bdd.and(a, b);
+        this.releaseLock();
+        return var;
     }
 
     public int not (int a) {
-        return bdd.not(a);
+        this.tryLock();
+        int var = bdd.not(a);
+        this.releaseLock();
+        return var;
     }
 
     public int oneSAT(int a) {
-        return bdd.oneSat(a);
+        this.tryLock();
+        int var = bdd.oneSat(a);
+        this.releaseLock();
+        return var;
     }
 
     public int subtract (int a, int b) {
-        int var = bdd.not(b);
-        return bdd.and(a, var);
+        this.tryLock();
+        int var1 = bdd.not(b);
+        int var2 = bdd.and(a, var1);
+        this.bdd.deref(var1);
+        this.releaseLock();
+        return var2;
     }
 
     public int getN() {
@@ -84,4 +120,9 @@ public class P4TesterBDD {
     public void print(int n) {
         this.bdd.printSet(n);
     }
+
+    public void deref(int n) {
+        this.bdd.deref(n);
+    }
+
 }
