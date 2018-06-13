@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>  
+  
+<project name="p4tester" default="build" basedir=".">  
+  
+<property name="src" value="src"/>  
+<property name="dest" value="build/"/>  
+<property name="lib" value="build/lib"/>  
+<property name="jar" value="build/p4tester.jar"/>  
+  
+<target name="init">  
+    <mkdir dir="${dest}"/> 
+    <mkdir dir="${lib}"/>  
+</target>  
+  
+<target name="compile">  
+    <javac srcdir="${src}" destdir="${dest}"/>  
+</target>  
+  
+<target name="build">  
+    <jar destfile="${jar}" basedir="${dest}">  
+       <manifest>  
+          <attribute name="Main-Class" value="Main"/>  
+       </manifest>  
+    </jar>  
+</target>  
+  
+<target name="run">  
+    <java classname="Main" classpath="${jar}"/>  
+</target> 
+  
+<target name="clean">  
+    <delete file="${jar}"/>  
+    <delete dir="${dest}"/>  
+    <delete dir="${lib}"/>  
+</target>  
+</project> 
