@@ -14,6 +14,7 @@ class RouterRule {
     private String nextHop;
     private ArrayList<SwitchProbeSet> switchProbeSets;
 
+
     RouterRule(String matchIp, int matchBdd, int prefix, String port, String nextHop) {
         this.matchIp = matchIp;
         this.matchBdd = matchBdd;
@@ -62,10 +63,11 @@ public class Router {
     private ArrayList<String> localIps;
     private ArrayList<SwitchProbeSet> switchProbeSets;
     private ArrayList<NetworkProbeSet> networkProbeSets;
-    private static final int MAX_RULES = 5000;
+    private static final int MAX_RULES = 20000;
     private boolean enablePriorityChecking;
     private BDDTree tree;
-    private BDDTree complementTree;
+    private ArrayList<BDDTreeNode> expiredNodes;
+    // private BDDTree complementTree;
 
     enum RULE_UPDATE_OPERATIONS {
         ADD_RULE,
@@ -82,9 +84,11 @@ public class Router {
         this.networkProbeSets = new ArrayList<>();
         this.enablePriorityChecking = false;
 
-        BDDTreeNode rootNode = new BDDTreeNode(bdd, 0, 0);
+        this.expiredNodes = new ArrayList<>();
 
-        this.complementTree = new BDDTree(bdd, rootNode, null);
+        // BDDTreeNode rootNode = new BDDTreeNode(bdd, 0, 0);
+
+        // this.complementTree = new BDDTree(bdd, rootNode, null);
 
         ruleHashMap = new HashMap<>();
     }
@@ -93,9 +97,9 @@ public class Router {
         return tree;
     }
 
-    public void addComplementProbeSet(NetworkProbeSet probeSet) {
-        this.complementTree.insertNetworkProbeSet(probeSet);
-    }
+    // public void addComplementProbeSet(NetworkProbeSet probeSet) {
+        // this.complementTree.insertNetworkProbeSet(probeSet);
+    // }
 
     public void buildTree() {
         this.tree = BDDTree.buildBinary(bdd, this.switchProbeSets);
@@ -168,9 +172,9 @@ public class Router {
         this.ruleHashMap.put(str, routerRule);
     }
 
-    public BDDTree getComplementTree() {
-        return complementTree;
-    }
+    // public BDDTree getComplementTree() {
+    //    return complementTree;
+    //}
 
     public void addProbe(Probe probe) {
         this.probes.add(probe);
@@ -276,7 +280,7 @@ public class Router {
     }
 
 
-    private ArrayList<ProbeSet> addRuleWithoutPriority(String matchIp, int matchBdd, int prefix, String port, String nextPort) {
+    private ArrayList<NetworkProbeSet> addRuleWithoutPriority(String matchIp, int matchBdd, int prefix, String port, String nextPort) {
         RouterRule rule = new RouterRule(matchIp, matchBdd, prefix, port, nextPort);
         SwitchProbeSet switchProbeSet = null;
         if (this.bdd.isOverlap(matchBdd, this.tree.getRoot().getMatch())) {
@@ -290,9 +294,9 @@ public class Router {
         }
 
         rule.addSwitchProbeSet(switchProbeSet);
-        ArrayList<ProbeSet> probeSets = new ArrayList<>();
+        ArrayList<NetworkProbeSet> probeSets = new ArrayList<>();
 
-        BDDTreeNode node = this.complementTree.query(switchProbeSet.getMatch());
+        // BDDTreeNode node = this.complementTree.query(switchProbeSet.getMatch());
 
         // TODO
         /*
@@ -309,24 +313,49 @@ public class Router {
         return probeSets;
     }
 
-    private void removeRule(String match) {
+    public ArrayList<NetworkProbeSet> removeRule(String match) {
         RouterRule rule = this.ruleHashMap.get(match);
 
+        ArrayList<NetworkProbeSet> networkProbeSets = new ArrayList<>();
         if (rule != null) {
-            // ArrayList<ProbeSet> probeSets = rule.getProbeSets();
-            // TODO
+            for (SwitchProbeSet switchProbeSet:rule.getSwitchProbeSets()) {
+                networkProbeSets.add(switchProbeSet.getNetworkProbeSet());
+                BDDTreeNode node = switchProbeSet.getNode();
+                int var = node.getMatch();
+
+                node.setMatch(this.bdd.getFalse());
+                node.setSwitchProbeSet(null);
+                node.setNetworkProbeSet(null);
+                node = node.getParent();
+
+                while (node != null) {
+
+                    int m = node.getMatch();
+
+                    m = this.bdd.subtract(m, var);
+
+                    node.setMatch(m);
+
+                    node = node.getParent();
+                }
+                this.switchProbeSets.remove(switchProbeSet);
+                this.networkProbeSets.remove(switchProbeSet.getNetworkProbeSet());
+            }
+            this.rules.remove(rule);
+            this.ruleHashMap.remove(match);
         }
+        return networkProbeSets;
     }
 
-    public void updateRule(String match, String port, String nextHop, RULE_UPDATE_OPERATIONS op) {
+    public ArrayList<NetworkProbeSet>  updateRule(String match, String port, String nextHop, RULE_UPDATE_OPERATIONS op) {
 
         String[] ipv4 =  match.split("/");
         if (ipv4.length != 2) {
-            return;
+            return null;
         }
 
         if (this.rules.size() > MAX_RULES) {
-            return;
+            return null;
         }
 
         String[] ip = ipv4[0].split("\\.");
@@ -367,12 +396,12 @@ public class Router {
 
         switch (op) {
             case ADD_RULE:
-                this.addRuleWithoutPriority(match, rule, prefix, port, nextHop);
-                break;
+                return this.addRuleWithoutPriority(match, rule, prefix, port, nextHop);
             case REMOVE_RULE:
-                this.removeRule(match);
-                break;
+                return this.removeRule(match);
         }
+
+        return null;
     }
 
     public ArrayList<NetworkProbeSet> getNetworkProbeSets() {
@@ -386,5 +415,9 @@ public class Router {
         // int n = this.bdd.subtract(this.rules.get(1), this.rules.get(0));
 
         // this.bdd.print(this.rules.get(0));
+    }
+
+    public short getPort(String name) {
+        return 1;
     }
 }

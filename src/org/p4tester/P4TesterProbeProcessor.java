@@ -8,11 +8,13 @@ import org.pcap4j.util.MacAddress;
 import org.pcap4j.util.NifSelector;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class P4TesterProbeProcessor implements PacketListener {
     private PcapNetworkInterface nif;
     private String devName;
     private PcapHandle handle;
+    private ArrayList<NetworkProbeSet> networkProbeSets;
     static final int PACKET_COUNT = 1000;
 
 
@@ -33,6 +35,7 @@ public class P4TesterProbeProcessor implements PacketListener {
         } catch (PcapNativeException e) {
             e.printStackTrace();
         }
+        this.networkProbeSets = null;
     }
 
     public void loop() {
@@ -44,6 +47,26 @@ public class P4TesterProbeProcessor implements PacketListener {
             e.printStackTrace();
         } catch (NotOpenException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void setNetworkProbeSets(ArrayList<NetworkProbeSet> networkProbeSets) {
+        this.networkProbeSets = networkProbeSets;
+    }
+
+    public void injectProbes() {
+        if (networkProbeSets != null) {
+            for (NetworkProbeSet networkProbeSet:networkProbeSets) {
+                for (Ethernet ethernet:networkProbeSet.generateProbes()) {
+                    try {
+                        this.handle.sendPacket(ethernet.serialize());
+                    } catch (NotOpenException e) {
+                        e.printStackTrace();
+                    } catch (PcapNativeException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 

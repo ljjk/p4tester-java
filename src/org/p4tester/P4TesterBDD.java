@@ -104,6 +104,10 @@ public class P4TesterBDD {
         return var2;
     }
 
+    public int[] oneSATArray(int a) {
+        return this.bdd.oneSat(a, null);
+    }
+
     public int getN() {
         return n;
     }
@@ -121,7 +125,7 @@ public class P4TesterBDD {
     }
 
     public void deref(int n) {
-        // this.bdd.deref(n);
+        this.bdd.deref(n);
     }
 
 }

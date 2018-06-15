@@ -37,6 +37,8 @@ class BDDTreeNode extends ProbeSet {
         this.leafNum = 0;
     }
 
+
+
     public void setNetworkProbeSet(NetworkProbeSet networkProbeSet) {
         this.networkProbeSet = networkProbeSet;
     }
@@ -311,6 +313,7 @@ public class BDDTree {
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = new BDDTreeNode(bdd, probeSets.get(i).getMatch(), 1);
             nodes[i].setSwitchProbeSet(probeSets.get(i));
+            probeSets.get(i).setNode(nodes[i]);
             leafNodes.add(nodes[i]);
         }
         int len = nodes.length;

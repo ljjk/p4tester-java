@@ -6,14 +6,42 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+
+class SwitchPortPair {
+    private Router router;
+    private short port;
+
+    SwitchPortPair(Router router, short port) {
+        this.router = router;
+        this.port = port;
+    }
+
+    public void setPort(short port) {
+        this.port = port;
+    }
+
+    public void setRouter(Router router) {
+        this.router = router;
+    }
+
+    public short getPort() {
+        return port;
+    }
+
+    public Router getRouter() {
+        return router;
+    }
+}
+
 public class P4Tester {
     private ArrayList<Router> routers;
-    private ArrayList<ProbeSet> probeSets;
+    private ArrayList<NetworkProbeSet> probeSets;
     private P4TesterBDD bdd;
     private BDDTree tree;
     private HashMap<String, Router> routerMap;
     private HashMap<String, ArrayList<Router>> topoMap;
     private Router root;
+    private ArrayList<SwitchPortPair> path;
     private static final String[] INTERNET2_ROUTERS = {
             "atla",
             "chic",
@@ -44,6 +72,7 @@ public class P4Tester {
         this.tree = new BDDTree(bdd);
         this.routers = new ArrayList<>();
         this.topoMap = new HashMap<>();
+        this.path = new ArrayList<>();
 
     }
 
@@ -145,6 +174,14 @@ public class P4Tester {
 
     }
 
+    public ArrayList<Short> getForwardPortList(String name) {
+        return new ArrayList<>();
+    }
+
+    public ArrayList<Short> getBackwordPortList(String name) {
+        return new ArrayList<>();
+    }
+
     @Deprecated
     public void buildBDDTree() {
         // Router router = this.routers.get(0);
@@ -155,7 +192,7 @@ public class P4Tester {
             }
         }
         */
-        this.probeSets = tree.getLeafNodes();
+        //this.probeSets = tree.getLeafNodes();
     }
 
     public void buildBDDTreeFast() {
@@ -165,14 +202,12 @@ public class P4Tester {
         for (int i = 0; i < routers.size(); i++) {
             ArrayList<SwitchProbeSet> probeSets = routers.get(i).getSwitchProbeSets();
 
-            long start = System.nanoTime();
-
             for (int j = 0; j < probeSets.size(); j++) {
                 if (!visitedProbeSets.contains(probeSets.get(j))) {
                     visitedProbeSets.add(probeSets.get(j));
                     int target = probeSets.get(j).getMatch();
 
-                    NetworkProbeSet networkProbeSet = new NetworkProbeSet(bdd);
+                    NetworkProbeSet networkProbeSet = new NetworkProbeSet(bdd, this);
                     networkProbeSet.addSwitchProbeSet(probeSets.get(j));
 
                     for (int k = 0; k < routers.size(); k++) {
@@ -191,7 +226,6 @@ public class P4Tester {
                     this.probeSets.add(networkProbeSet);
                 }
             }
-            System.out.println(System.nanoTime() - start);
         }
 
         System.out.println(this.probeSets.size());
@@ -231,24 +265,26 @@ public class P4Tester {
         this.root = this.routers.get(0);
     }
 
+    public ArrayList<SwitchPortPair> getPath() {
+        return path;
+    }
+
     public void generateProbes() {
         this.buildInternet2ST();
 
-        ArrayList<String> path = new ArrayList<>();
-
-        traverseST(root, path);
+        traverseST(root);
     }
 
-    private void traverseST(Router router, ArrayList<String> path) {
+    private void traverseST(Router router) {
         for (NetworkProbeSet probeSet:router.getNetworkProbeSets()) {
-                probeSet.traverse(router, path.size());
+                probeSet.traverse(router, this.path.size());
         }
 
         if (this.topoMap.containsKey(router.getName())) {
             for (Router child: this.topoMap.get(router.getName())) {
-                path.add(child.getName());
-                traverseST(child, path);
-                path.add(router.getName());
+                path.add(new SwitchPortPair(child, router.getPort(child.getName())));
+                traverseST(child);
+                path.add(new SwitchPortPair(router, child.getPort(router.getName())));
             }
         }
     }
@@ -283,6 +319,21 @@ public class P4Tester {
         this.encodeInternet2("", "resource/Internet2/hous-show_route_forwarding-table_table_default.xml");
     }
 
+
+    public void removeRule(String routerName, String match) {
+        Router router = this.routerMap.get(routerName);
+        if (router != null) {
+            ArrayList<NetworkProbeSet> networkProbeSets = router.removeRule(match);
+            for (NetworkProbeSet networkProbeSet: networkProbeSets) {
+
+            }
+        }
+    }
+
+
+    public void addRule(String match, String port, String nexthop) {
+
+    }
 }
 
 class P4TesterProbeSetConstructor implements Runnable {
