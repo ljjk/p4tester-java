@@ -65,6 +65,7 @@ public class NetworkProbeSet extends ProbeSet {
 
     public void addRouter(Router router) {
         if (!routers.contains(router)) {
+            router.addNetworkProbeSets(this);
             this.routers.add(router);
         }
     }
@@ -73,5 +74,8 @@ public class NetworkProbeSet extends ProbeSet {
         return routers;
     }
 
-
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }

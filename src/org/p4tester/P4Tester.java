@@ -148,49 +148,50 @@ public class P4Tester {
     @Deprecated
     public void buildBDDTree() {
         // Router router = this.routers.get(0);
+        /*
         for (Router router:this.routers) {
             for (ProbeSet probeSet : router.getProbeSets()) {
                 tree.insert(probeSet);
             }
         }
+        */
         this.probeSets = tree.getLeafNodes();
     }
 
     public void buildBDDTreeFast() {
         // Router router = this.routers.get(0);
 
-        ArrayList<ProbeSet> visitedProbeSets = new ArrayList<>();
+        HashSet<SwitchProbeSet> visitedProbeSets = new HashSet<>();
         for (int i = 0; i < routers.size(); i++) {
-            ArrayList<Router> tmpRouters = new ArrayList<>();
-            ArrayList<ProbeSet> probeSets = routers.get(i).getProbeSets();
+            ArrayList<SwitchProbeSet> probeSets = routers.get(i).getSwitchProbeSets();
+
+            long start = System.nanoTime();
+
             for (int j = 0; j < probeSets.size(); j++) {
                 if (!visitedProbeSets.contains(probeSets.get(j))) {
-
-                    int target = probeSets.get(j).getExp();
                     visitedProbeSets.add(probeSets.get(j));
-                    tmpRouters.add(routers.get(i));
+                    int target = probeSets.get(j).getMatch();
+
+                    NetworkProbeSet networkProbeSet = new NetworkProbeSet(bdd);
+                    networkProbeSet.addSwitchProbeSet(probeSets.get(j));
+
                     for (int k = 0; k < routers.size(); k++) {
                         if (k != i) {
-                            ProbeSet probeSet = routers.get(k).getTree().query(target);
-                            if (probeSet != null) {
-                                visitedProbeSets.add(probeSet);
-                                target = bdd.and(probeSet.getExp(), target);
-                                tmpRouters.add(routers.get(k));
+                            BDDTreeNode treeNode = routers.get(k).getTree().query(target);
+                            if (treeNode != null) {
+                                visitedProbeSets.add(treeNode.getSwitchProbeSet());
+                                networkProbeSet.addSwitchProbeSet(treeNode.getSwitchProbeSet());
+                                target = networkProbeSet.getMatch();
                             } else {
-                                routers.get(k).getComplementTree().insertProbeSet(probeSets.get(j));
+                                // routers.get(k).getComplementTree().insertNetworkProbeSet(networkProbeSet);
                             }
                         }
                     }
-                    ProbeSet networkProbeSet = new ProbeSet(target);
-                    networkProbeSet.addRouters(tmpRouters);
 
-                    for (Router router:tmpRouters) {
-                        router.addNetworkProbeSets(networkProbeSet);
-                    }
-                    tmpRouters.clear();
                     this.probeSets.add(networkProbeSet);
                 }
             }
+            System.out.println(System.nanoTime() - start);
         }
 
         System.out.println(this.probeSets.size());
@@ -239,7 +240,7 @@ public class P4Tester {
     }
 
     private void traverseST(Router router, ArrayList<String> path) {
-        for (ProbeSet probeSet:router.getNetworkProbeSets()) {
+        for (NetworkProbeSet probeSet:router.getNetworkProbeSets()) {
                 probeSet.traverse(router, path.size());
         }
 

@@ -3,37 +3,48 @@ package org.p4tester;
 import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 
-class BDDTreeNode {
-    private ProbeSet probeSet;
-    private int complement;
-    private P4TesterBDD bdd;
+class BDDTreeNode extends ProbeSet {
     private BDDTreeNode parent;
+    private P4TesterBDD bdd;
     private ArrayList<Router> routers;
     private ArrayList<BDDTreeNode> children;
     private int leafNum;
     private int visitedNum;
+    private SwitchProbeSet switchProbeSet;
+    private NetworkProbeSet networkProbeSet;
 
-    BDDTreeNode (ProbeSet probeSet, P4TesterBDD bdd, int leaf) {
-        this.probeSet = probeSet;
+    BDDTreeNode (P4TesterBDD bdd, int match, int leaf) {
+        super(match);
         this.bdd = bdd;
-        this.complement = probeSet.getExp();
         this.routers = new ArrayList<>();
         this.children = new ArrayList<>();
         this.parent = null;
         this.visitedNum = 0;
         this.leafNum = leaf;
+        this.switchProbeSet = null;
+        this.networkProbeSet = null;
     }
 
+    @Deprecated
     BDDTreeNode (ProbeSet probeSet, P4TesterBDD bdd) {
-        this.probeSet = probeSet;
-        this.bdd = bdd;
-        this.complement = probeSet.getExp();
+        // this.probeSet = probeSet;
+        // this.complement = probeSet.getExp();
+        super(probeSet.getMatch());
         this.routers = new ArrayList<>();
         this.children = new ArrayList<>();
         this.parent = null;
         this.visitedNum = 0;
         this.leafNum = 0;
     }
+
+    public void setNetworkProbeSet(NetworkProbeSet networkProbeSet) {
+        this.networkProbeSet = networkProbeSet;
+    }
+
+    public void setSwitchProbeSet(SwitchProbeSet switchProbeSet) {
+        this.switchProbeSet = switchProbeSet;
+    }
+
     public boolean isVisited(Router name) {
         return routers.contains(name);
     }
@@ -46,12 +57,19 @@ class BDDTreeNode {
         return parent;
     }
 
-    public int getComplement() {
-        return complement;
+    public NetworkProbeSet getNetworkProbeSet() {
+        return networkProbeSet;
     }
 
-    public ProbeSet getProbeSet() {
-        return probeSet;
+    public SwitchProbeSet getSwitchProbeSet() {
+        return switchProbeSet;
+    }
+
+    public void mergeChild(BDDTreeNode node) {
+        this.addChild(node);
+        int var = match;
+        this.match = this.bdd.or(node.match, var);
+        this.bdd.deref(var);
     }
 
     public void removeChild (BDDTreeNode node) {
@@ -73,8 +91,8 @@ class BDDTreeNode {
         }
     }
 
-    public void setProbeSet(ProbeSet probeSet) {
-        this.probeSet = probeSet;
+    public void setMatch(int match) {
+        this.match = match;
     }
 
     public int getLeafNum() {
@@ -110,7 +128,7 @@ public class BDDTree {
     private ArrayList<BDDTreeNode> nodes;
 
     BDDTree (P4TesterBDD bdd) {
-        root = new BDDTreeNode(new ProbeSet(bdd.getTrueBDD()), bdd);
+        root = new BDDTreeNode(bdd, bdd.getFalse(), 0);
         this.bdd = bdd;
         this.nodes = new ArrayList<>();
     }
@@ -133,6 +151,7 @@ public class BDDTree {
         while(whileContinue) {
             whileContinue = false;
             enableComplement = true;
+            /*
             for (BDDTreeNode c: node.getChildren()) {
                 if (!c.isVisited(probeSet.getRouters().get(0))) {
                     if (bdd.isOverlap(c.getProbeSet().getExp(), probeSet.getExp())) {
@@ -158,40 +177,66 @@ public class BDDTree {
                     nodes.add(tmpNode);
             //              }
             }
+            */
         }
     }
 
-    void insertProbeSet(ProbeSet probeSet) {
+    void insertSwitchProbeSet(SwitchProbeSet probeSet) {
         if (this.nodes.size() < 2) {
-            BDDTreeNode node = new BDDTreeNode(probeSet, bdd);
-            root.addChild(node);
-            int var = this.bdd.or(root.getProbeSet().getExp(), probeSet.getExp());
-            root.setProbeSet(new ProbeSet(var));
+            BDDTreeNode node = new BDDTreeNode(bdd, probeSet.getMatch(), 1);
+            root.mergeChild(node);
             this.nodes.add(node);
         } else {
             BDDTreeNode last = this.nodes.get(this.nodes.size() - 1);
             last.getParent().removeChild(last);
-            int rule = this.bdd.or(last.getProbeSet().getExp(), probeSet.getExp());
-            BDDTreeNode newNode = new BDDTreeNode(probeSet, bdd);
-            BDDTreeNode parentNode = new BDDTreeNode(new ProbeSet(rule), bdd);
+            BDDTreeNode newNode = new BDDTreeNode(bdd, probeSet.getMatch(), 1);
+            newNode.setSwitchProbeSet(probeSet);
+            BDDTreeNode parentNode = new BDDTreeNode(bdd, 0, 1);
+            last.getParent().addChild(parentNode);
+            parentNode.mergeChild(last);
+            parentNode.mergeChild(newNode);
+            BDDTreeNode node = newNode.getParent().getParent();
+            while (node != null) {
+                int var = node.getMatch();
+                node.setMatch(this.bdd.or(var, probeSet.getMatch()));
+                this.bdd.deref(var);
+                node = node.getParent();
+            }
+            this.nodes.add(newNode);
+        }
+    }
+
+    void insertNetworkProbeSet(NetworkProbeSet probeSet) {
+        if (this.nodes.size() < 2) {
+            BDDTreeNode node = new BDDTreeNode(bdd, probeSet.getMatch(), 1);
+            root.mergeChild(node);
+            this.nodes.add(node);
+        } else {
+            BDDTreeNode last = this.nodes.get(this.nodes.size() - 1);
+            last.getParent().removeChild(last);
+            BDDTreeNode newNode = new BDDTreeNode(bdd, probeSet.getMatch(), 1);
+            newNode.setNetworkProbeSet(probeSet);
+            BDDTreeNode parentNode = new BDDTreeNode(bdd, 0, 1);
             last.getParent().addChild(parentNode);
             parentNode.addChild(last);
             parentNode.addChild(newNode);
             BDDTreeNode node = newNode.getParent().getParent();
             while (node != null) {
-                ProbeSet tmp = new ProbeSet(this.bdd.or(probeSet.getExp(), node.getProbeSet().getExp()));
-                node.setProbeSet(tmp);
+                int var = node.getMatch();
+                node.setMatch(this.bdd.or(var, probeSet.getMatch()));
+                this.bdd.deref(var);
+                node = node.getParent();
             }
             this.nodes.add(newNode);
         }
     }
 
 
-    public ProbeSet query(int target) {
+    public BDDTreeNode query(int target) {
         BDDTreeNode node = root;
         boolean found = true;
 
-        if (!bdd.isOverlap(root.getProbeSet().getExp(), target)) {
+        if (!bdd.isOverlap(root.getMatch(), target)) {
             return null;
         }
 
@@ -199,7 +244,7 @@ public class BDDTree {
             found = false;
             BDDTreeNode child = node.getChildren().get(0);
             if (child.getLeafNum() > child.getVisitedNum()) {
-                if (bdd.isOverlap(child.getProbeSet().getExp(), target)) {
+                if (bdd.isOverlap(child.getMatch(), target)) {
                     node.visit();
                     node = child;
                     found = true;
@@ -211,21 +256,25 @@ public class BDDTree {
                     node.visit();
                     node = child;
                     found = true;
+                } else {
+                    // System.out.println("1");
                 }
             }
         }
         if (found) {
-            return node.getProbeSet();
+            return node;
         } else {
             return null;
         }
     }
 
+    @Deprecated
     public ArrayList<ProbeSet> getLeafNodes() {
 
         ArrayList<ProbeSet> probeSets = new ArrayList<>();
         ArrayList<BDDTreeNode> nodes = new ArrayList<>();
 
+        /*
         for(BDDTreeNode node: this.nodes) {
             if (node.isLeaf()) {
                 ProbeSet probeSet = new ProbeSet(node.getProbeSet().getExp());
@@ -247,6 +296,7 @@ public class BDDTree {
                 probeSets.add(probeSet);
             }
         }
+        */
 
         return  probeSets;
     }
@@ -255,11 +305,12 @@ public class BDDTree {
         return root;
     }
 
-    static public BDDTree buildBinary(P4TesterBDD bdd, ArrayList<ProbeSet> probeSets) {
+    static public BDDTree buildBinary(P4TesterBDD bdd, ArrayList<SwitchProbeSet> probeSets) {
         BDDTreeNode[] nodes = new BDDTreeNode[probeSets.size()];
         ArrayList<BDDTreeNode> leafNodes = new ArrayList<BDDTreeNode>();
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = new BDDTreeNode(probeSets.get(i), bdd, 1);
+            nodes[i] = new BDDTreeNode(bdd, probeSets.get(i).getMatch(), 1);
+            nodes[i].setSwitchProbeSet(probeSets.get(i));
             leafNodes.add(nodes[i]);
         }
         int len = nodes.length;
@@ -267,10 +318,10 @@ public class BDDTree {
         while(len > 1) {
             count = 0;
             for (int i = 0; i < len - 1; i += 2) {
-                ProbeSet probeSet = new ProbeSet(bdd.or(nodes[i].getProbeSet().getExp(), nodes[i + 1].getProbeSet().getExp()));
-                BDDTreeNode node = new BDDTreeNode(probeSet, bdd, 0);
-                node.addChild(nodes[i]);
-                node.addChild(nodes[i + 1]);
+                // int var = new ProbeSet(bdd.or(nodes[i].getProbeSet().getExp(), nodes[i + 1].getProbeSet().getExp()));
+                BDDTreeNode node = new BDDTreeNode(bdd, 0, 0);
+                node.mergeChild(nodes[i]);
+                node.mergeChild(nodes[i + 1]);
                 nodes[count] = node;
                 count ++;
             }

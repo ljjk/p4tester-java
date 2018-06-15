@@ -27,4 +27,9 @@ public class SwitchProbeSet extends ProbeSet {
     public RouterRule getRouterRule() {
         return routerRule;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }
