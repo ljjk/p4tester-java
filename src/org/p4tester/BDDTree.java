@@ -1,5 +1,6 @@
 package org.p4tester;
 
+import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 
 class BDDTreeNode {
@@ -53,6 +54,10 @@ class BDDTreeNode {
         return probeSet;
     }
 
+    public void removeChild (BDDTreeNode node) {
+        this.children.remove(node);
+    }
+
     public void addChild(BDDTreeNode node) {
         this.children.add(node);
         // this.addRouters(node.getRouters());
@@ -66,6 +71,10 @@ class BDDTreeNode {
         if (!routers.contains(router)) {
             this.routers.add(router);
         }
+    }
+
+    public void setProbeSet(ProbeSet probeSet) {
+        this.probeSet = probeSet;
     }
 
     public int getLeafNum() {
@@ -106,12 +115,17 @@ public class BDDTree {
         this.nodes = new ArrayList<>();
     }
 
-    BDDTree (P4TesterBDD bdd, BDDTreeNode root) {
+    BDDTree (P4TesterBDD bdd, BDDTreeNode root, ArrayList<BDDTreeNode> nodes) {
         this.root = root;
         this.bdd = bdd;
-        this.nodes = new ArrayList<>();
+        if (nodes == null) {
+            this.nodes = new ArrayList<>();
+        } else {
+            this.nodes = nodes;
+        }
     }
 
+    @Deprecated
     void insert(ProbeSet probeSet) {
         BDDTreeNode node = root;
         boolean whileContinue = true;
@@ -146,6 +160,32 @@ public class BDDTree {
             }
         }
     }
+
+    void insertProbeSet(ProbeSet probeSet) {
+        if (this.nodes.size() < 2) {
+            BDDTreeNode node = new BDDTreeNode(probeSet, bdd);
+            root.addChild(node);
+            int var = this.bdd.or(root.getProbeSet().getExp(), probeSet.getExp());
+            root.setProbeSet(new ProbeSet(var));
+            this.nodes.add(node);
+        } else {
+            BDDTreeNode last = this.nodes.get(this.nodes.size() - 1);
+            last.getParent().removeChild(last);
+            int rule = this.bdd.or(last.getProbeSet().getExp(), probeSet.getExp());
+            BDDTreeNode newNode = new BDDTreeNode(probeSet, bdd);
+            BDDTreeNode parentNode = new BDDTreeNode(new ProbeSet(rule), bdd);
+            last.getParent().addChild(parentNode);
+            parentNode.addChild(last);
+            parentNode.addChild(newNode);
+            BDDTreeNode node = newNode.getParent().getParent();
+            while (node != null) {
+                ProbeSet tmp = new ProbeSet(this.bdd.or(probeSet.getExp(), node.getProbeSet().getExp()));
+                node.setProbeSet(tmp);
+            }
+            this.nodes.add(newNode);
+        }
+    }
+
 
     public ProbeSet query(int target) {
         BDDTreeNode node = root;
@@ -211,12 +251,17 @@ public class BDDTree {
         return  probeSets;
     }
 
+    public BDDTreeNode getRoot() {
+        return root;
+    }
+
     static public BDDTree buildBinary(P4TesterBDD bdd, ArrayList<ProbeSet> probeSets) {
         BDDTreeNode[] nodes = new BDDTreeNode[probeSets.size()];
+        ArrayList<BDDTreeNode> leafNodes = new ArrayList<BDDTreeNode>();
         for (int i = 0; i < nodes.length; i++) {
             nodes[i] = new BDDTreeNode(probeSets.get(i), bdd, 1);
+            leafNodes.add(nodes[i]);
         }
-
         int len = nodes.length;
         int count;
         while(len > 1) {
@@ -232,9 +277,9 @@ public class BDDTree {
             if (len % 2 == 1) {
                 nodes[count++] = nodes[len - 1];
             }
-            // System.out.println(len);
             len = count;
         }
-        return new BDDTree(bdd, nodes[0]);
+
+        return new BDDTree(bdd, nodes[0], leafNodes);
     }
 }

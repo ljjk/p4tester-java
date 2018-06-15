@@ -145,6 +145,7 @@ public class P4Tester {
 
     }
 
+    @Deprecated
     public void buildBDDTree() {
         // Router router = this.routers.get(0);
         for (Router router:this.routers) {
@@ -175,6 +176,8 @@ public class P4Tester {
                                 visitedProbeSets.add(probeSet);
                                 target = bdd.and(probeSet.getExp(), target);
                                 tmpRouters.add(routers.get(k));
+                            } else {
+                                routers.get(k).getComplementTree().insertProbeSet(probeSets.get(j));
                             }
                         }
                     }
@@ -248,7 +251,6 @@ public class P4Tester {
             }
         }
     }
-
 
     public void probeConstruct() {
         ArrayList<Thread> constructors = new ArrayList<>();
