@@ -3,7 +3,6 @@ package org.p4tester;
 
 
 import java.util.ArrayList;
-import java.util.Vector;
 
 public class Router {
     private ArrayList<Integer> rules ;
@@ -79,6 +78,7 @@ public class Router {
                 value = value % (1 << (7 - j));
             }
         }
+
         this.matches.add(str);
 
         int rule;
@@ -92,13 +92,18 @@ public class Router {
             for (int i = 1; i < 32; i++) {
                 if (i < prefix) {
                     if (bits.get(i) == 1) {
+                        int var = rule;
                         rule = this.bdd.and(rule, this.bdd.getVar(i));
+                        this.bdd.deref(var);
                     } else {
+                        int var = rule;
                         rule = this.bdd.and(rule, this.bdd.getNotVar(i));
+                        this.bdd.deref(var);
                     }
                 } else {
                     int var = this.bdd.or(this.bdd.getVar(i), this.bdd.getNotVar(i));
                     rule = this.bdd.and(rule, var);
+                    this.bdd.deref(var);
                 }
             }
         } else {
@@ -181,6 +186,7 @@ public class Router {
                                 ProbeSet probeSet = new ProbeSet(override);
                                 probeSet.addRule(r);
                                 probeSet.addRouter(this);
+                                probeSet.setPriority(prefixes.get(rid_i));
                                 this.probeSets.add(probeSet);
                             }
                             Hb = this.bdd.subtract(Hb, override);
@@ -191,6 +197,7 @@ public class Router {
                     ProbeSet probeSet = new ProbeSet(Hb);
                     probeSet.addRouter(this);
                     probeSet.addRule(r);
+                    probeSet.setPriority(prefixes.get(rid_i));
                     this.probeSets.add(probeSet);
                 }
             }
@@ -210,11 +217,72 @@ public class Router {
         this.networkProbeSets.add(probeSet);
     }
 
+    private void addRule(int rule, int prefix, int port) {
 
-    public void updateRule(String match, int port, RULE_UPDATE_OPERATIONS op) {
-        
     }
 
+    private void removeRule(int rule, int prefix, int port) {
+
+    }
+
+    public void updateRule(String match, int port, RULE_UPDATE_OPERATIONS op) {
+        String[] ipv4 =  match.split("/");
+        if (ipv4.length != 2) {
+            return;
+        }
+
+        if (this.rules.size() > MAX_RULES) {
+            return;
+        }
+
+        String[] ip = ipv4[0].split("\\.");
+        int prefix = Integer.valueOf(ipv4[1]);
+
+        ArrayList<Integer> bits = new ArrayList<>();
+
+        for (String i:ip) {
+            int value = Integer.valueOf(i);
+            for (int j = 0; j < 8; j++) {
+                bits.add(value / (1 << (7 - j)));
+                value = value % (1 << (7 - j));
+            }
+        }
+
+        int rule;
+        if (prefix > 0) {
+            rule = this.bdd.getVar(0);
+
+            if (bits.get(0) == 0) {
+                rule = this.bdd.getNotVar(0);
+            }
+
+            for (int i = 1; i < 32; i++) {
+                if (i < prefix) {
+                    int var = rule;
+                    if (bits.get(i) == 1) {
+                        rule = this.bdd.and(rule, this.bdd.getVar(i));
+                    } else {
+                        rule = this.bdd.and(rule, this.bdd.getNotVar(i));
+                    }
+                    this.bdd.deref(var);
+                } else {
+                    int var = this.bdd.or(this.bdd.getVar(i), this.bdd.getNotVar(i));
+                    rule = this.bdd.and(rule, var);
+                }
+            }
+        } else {
+            rule = this.bdd.getTrueBDD();
+        }
+
+        switch (op) {
+            case ADD_RULE:
+                this.addRule(rule, prefix, port);
+                break;
+            case REMOVE_RULE:
+                this.removeRule(rule, prefix, port);
+                break;
+        }
+    }
 
     public ArrayList<ProbeSet> getNetworkProbeSets() {
         return networkProbeSets;

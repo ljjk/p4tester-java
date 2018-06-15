@@ -158,8 +158,6 @@ public class P4Tester {
     public void buildBDDTreeFast() {
         // Router router = this.routers.get(0);
 
-
-
         ArrayList<ProbeSet> visitedProbeSets = new ArrayList<>();
         for (int i = 0; i < routers.size(); i++) {
             ArrayList<Router> tmpRouters = new ArrayList<>();
@@ -278,7 +276,7 @@ public class P4Tester {
         }
     }
 
-    public void internaTest() {
+    public void internalTest() {
         this.encodeInternet2("", "resource/Internet2/hous-show_route_forwarding-table_table_default.xml");
     }
 

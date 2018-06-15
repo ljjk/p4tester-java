@@ -13,13 +13,14 @@ public class P4TesterProbeProcessor implements PacketListener {
     private PcapNetworkInterface nif;
     private String devName;
     private PcapHandle handle;
+    static final int PACKET_COUNT = 1000;
+
 
     P4TesterProbeProcessor() {
         try {
             this.nif = new NifSelector().selectNetworkInterface();
         } catch (IOException e) {
             e.printStackTrace();
-            return;
         }
 
         if (nif == null) {
@@ -31,9 +32,19 @@ public class P4TesterProbeProcessor implements PacketListener {
 
         } catch (PcapNativeException e) {
             e.printStackTrace();
-            return;
         }
+    }
 
+    public void loop() {
+        try {
+            this.handle.loop(PACKET_COUNT, this);
+        } catch (PcapNativeException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (NotOpenException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -41,15 +52,5 @@ public class P4TesterProbeProcessor implements PacketListener {
         Ethernet ethernet = new Ethernet();
         ethernet.deserialize(packet.getRawData(), 0, packet.length());
     }
-
-}
-
-class ProbeSender {
-    public void sendRouterProbe(Ethernet ethernet) {
-
-    }
-}
-
-class ProbeReceiver implements PacketListener {
 
 }

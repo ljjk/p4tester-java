@@ -10,6 +10,7 @@ public class ProbeSet {
     private ArrayList<String> visitedRouters;
     private int count;
     private int exp;
+    private int priority;
     private static final int MAX = 9;
 
     ProbeSet(int rule) {
@@ -45,6 +46,14 @@ public class ProbeSet {
         for(Router router: routers) {
             this.addRouter(router);
         }
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public int getPriority() {
+        return priority;
     }
 
     @Override
