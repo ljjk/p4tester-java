@@ -21,6 +21,11 @@ public class Router {
     private boolean enablePriorityChecking;
     private BDDTree tree;
 
+    enum RULE_UPDATE_OPERATIONS {
+        ADD_RULE,
+        REMOVE_RULE
+    }
+
     Router(P4TesterBDD bdd, String name) {
         this.bdd = bdd;
         this.prefixes = new ArrayList<>();
@@ -203,6 +208,11 @@ public class Router {
 
     public void addNetworkProbeSets(ProbeSet probeSet) {
         this.networkProbeSets.add(probeSet);
+    }
+
+
+    public void updateRule(String match, int port, RULE_UPDATE_OPERATIONS op) {
+        
     }
 
 
