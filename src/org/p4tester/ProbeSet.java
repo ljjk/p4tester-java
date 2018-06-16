@@ -20,6 +20,10 @@ public abstract class ProbeSet {
         return false;
     }
 
+    public void setMatch(int match) {
+        this.match = match;
+    }
+
     public int getMatch() {
         return match;
     }

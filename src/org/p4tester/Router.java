@@ -24,6 +24,17 @@ class RouterRule {
         this.switchProbeSets = new ArrayList<>();
     }
 
+    public void setMatchBdd(int matchBdd) {
+        this.matchBdd = matchBdd;
+    }
+
+    public void setNextHop(String nextHop) {
+        this.nextHop = nextHop;
+    }
+
+    public void setPort(String port) {
+        this.port = port;
+    }
 
     public ArrayList<SwitchProbeSet> getSwitchProbeSets() {
         return switchProbeSets;
@@ -52,6 +63,8 @@ class RouterRule {
     public void addSwitchProbeSet(SwitchProbeSet probeSet) {
         this.switchProbeSets.add(probeSet);
     }
+
+
 }
 
 public class Router {
@@ -242,7 +255,7 @@ public class Router {
 
                         if (this.bdd.oneSAT(override) != 0) {
                             if (!rule_i.getPort().equals(rule_j.getPort())) {
-                                SwitchProbeSet switchProbeSet = new SwitchProbeSet(rule_i, override, this);
+                                SwitchProbeSet switchProbeSet = new SwitchProbeSet(rule_i, override, this, rule_j.getPrefix());
                                 rule_i.addSwitchProbeSet(switchProbeSet);
                                 switchProbeSets.add(switchProbeSet);
                                 System.out.println("1");
@@ -254,7 +267,7 @@ public class Router {
                     }
                 }
                 if (this.bdd.oneSAT(Hb) != 0) {
-                    SwitchProbeSet switchProbeSet = new SwitchProbeSet(rule_i, Hb, this);
+                    SwitchProbeSet switchProbeSet = new SwitchProbeSet(rule_i, Hb, this, 0);
                     rule_i.addSwitchProbeSet(switchProbeSet);
                     switchProbeSets.add(switchProbeSet);
                 }
@@ -279,83 +292,10 @@ public class Router {
         return null;
     }
 
-
-    private ArrayList<NetworkProbeSet> addRuleWithoutPriority(String matchIp, int matchBdd, int prefix, String port, String nextPort) {
-        RouterRule rule = new RouterRule(matchIp, matchBdd, prefix, port, nextPort);
-        SwitchProbeSet switchProbeSet = null;
-        if (this.bdd.isOverlap(matchBdd, this.tree.getRoot().getMatch())) {
-            int  var = this.bdd.subtract(matchBdd, this.tree.getRoot().getMatch());
-            if (this.bdd.oneSAT(var) != 0) {
-                switchProbeSet = new SwitchProbeSet(rule, var, this);
-                this.tree.insertSwitchProbeSet(switchProbeSet);
-            }
-        } else {
-            switchProbeSet = new SwitchProbeSet(rule, matchBdd, this);
-        }
-
-        rule.addSwitchProbeSet(switchProbeSet);
-        ArrayList<NetworkProbeSet> probeSets = new ArrayList<>();
-
-        // BDDTreeNode node = this.complementTree.query(switchProbeSet.getMatch());
-
-        // TODO
-        /*
-        if (networkProbeSet == null) {
-            switchProbeSet.addRouter(this);
-            probeSets.add(probeSet);
-        } else {
-            networkProbeSet.addRouter(this);
-            probeSets.add(networkProbeSet);
-        }
-        */
-
-        this.rules.add(rule);
-        return probeSets;
-    }
-
-    public ArrayList<NetworkProbeSet> removeRule(String match) {
-        RouterRule rule = this.ruleHashMap.get(match);
-
-        ArrayList<NetworkProbeSet> networkProbeSets = new ArrayList<>();
-        if (rule != null) {
-            for (SwitchProbeSet switchProbeSet:rule.getSwitchProbeSets()) {
-                networkProbeSets.add(switchProbeSet.getNetworkProbeSet());
-                BDDTreeNode node = switchProbeSet.getNode();
-                int var = node.getMatch();
-
-                node.setMatch(this.bdd.getFalse());
-                node.setSwitchProbeSet(null);
-                node.setNetworkProbeSet(null);
-                node = node.getParent();
-
-                while (node != null) {
-
-                    int m = node.getMatch();
-
-                    m = this.bdd.subtract(m, var);
-
-                    node.setMatch(m);
-
-                    node = node.getParent();
-                }
-                this.switchProbeSets.remove(switchProbeSet);
-                this.networkProbeSets.remove(switchProbeSet.getNetworkProbeSet());
-            }
-            this.rules.remove(rule);
-            this.ruleHashMap.remove(match);
-        }
-        return networkProbeSets;
-    }
-
-    public ArrayList<NetworkProbeSet>  updateRule(String match, String port, String nextHop, RULE_UPDATE_OPERATIONS op) {
-
+    private int getMatchBdd(String match) {
         String[] ipv4 =  match.split("/");
         if (ipv4.length != 2) {
-            return null;
-        }
-
-        if (this.rules.size() > MAX_RULES) {
-            return null;
+            return 0;
         }
 
         String[] ip = ipv4[0].split("\\.");
@@ -394,15 +334,159 @@ public class Router {
             rule = this.bdd.getTrue();
         }
 
-        switch (op) {
-            case ADD_RULE:
-                return this.addRuleWithoutPriority(match, rule, prefix, port, nextHop);
-            case REMOVE_RULE:
-                return this.removeRule(match);
+        return rule;
+    }
+
+    public int getPrefix(String match) {
+        String[] ipv4 =  match.split("/");
+        if (ipv4.length != 2) {
+            return 0;
         }
 
-        return null;
+        String[] ip = ipv4[0].split("\\.");
+        return Integer.valueOf(ipv4[1]);
     }
+
+
+    public ArrayList<SwitchProbeSet> addRuleWithPriority(String match,
+                                                             String port,
+                                                             String nextHop) {
+        int matchBdd = this.getMatchBdd(match);
+        RouterRule routerRule = new RouterRule(match, matchBdd,
+                getPrefix(match), port, nextHop);
+        this.rules.add(routerRule);
+        this.ruleHashMap.put(match, routerRule);
+
+
+        // Rules that need to add new network probe sets
+        ArrayList<SwitchProbeSet> bddRules = new ArrayList<>();
+
+        int var = this.bdd.subtract(matchBdd, this.tree.getRoot().getMatch());
+
+        if (this.bdd.oneSAT(var) != 0) {
+            bddRules.add(new SwitchProbeSet(routerRule, var, this, 0));
+        }
+
+        ArrayList<BDDTreeNode> nodes = this.tree.queryMatchNodes(matchBdd);
+
+        for (BDDTreeNode node:nodes) {
+            SwitchProbeSet switchProbeSet = node.getSwitchProbeSet();
+            NetworkProbeSet networkProbeSet = switchProbeSet.getNetworkProbeSet();
+            RouterRule ruleTmp = switchProbeSet.getRouterRule();
+            if (ruleTmp.getPrefix() > routerRule.getPrefix()) {
+                int tmp = this.bdd.subtract(switchProbeSet.getMatch(), matchBdd);
+                if (this.bdd.oneSAT(tmp) != 0) {
+                    bddRules.add(new SwitchProbeSet(routerRule, tmp,
+                            this, 0));
+
+                    var = this.bdd.and(switchProbeSet.getMatch(), matchBdd);
+                    switchProbeSet.setMatch(var);
+                    BDDTreeNode tmpNode = node.getParent();
+                    while (tmpNode != null) {
+                        var = this.bdd.subtract(tmpNode.getMatch(), tmp);
+                        tmpNode.setMatch(var);
+                        tmpNode = tmpNode.getParent();
+                    }
+
+                    tmp = this.bdd.subtract(networkProbeSet.getMatch(), matchBdd);
+                    if (bdd.oneSAT(tmp) != 0) {
+                        // tmp = this.bdd.and(networkProbeSet.getMatch(), matchBdd);
+                        networkProbeSet.setMatch(tmp);
+                    }
+                }
+
+            } else if (ruleTmp.getPrefix() < routerRule.getPrefix()) {
+                if (bdd.isOverlap(networkProbeSet.getMatch(), matchBdd)) {
+                    int tmp = this.bdd.subtract(switchProbeSet.getMatch(), matchBdd);
+                    if (this.bdd.oneSAT(tmp) != 0) {
+                        var = this.bdd.subtract(networkProbeSet.getMatch(), matchBdd);
+
+                        if (bdd.oneSAT(var) == 0) {
+                            // DO NOTHING
+                            switchProbeSet.setMatch(tmp);
+
+                            BDDTreeNode tmpNode = node.getParent();
+                            while (tmpNode != null) {
+                                var = this.bdd.subtract(tmpNode.getMatch(), matchBdd);
+                                tmpNode.setMatch(var);
+                                tmpNode = tmpNode.getParent();
+                            }
+
+                            bddRules.add(switchProbeSet);
+                        } else {
+                            networkProbeSet.setMatch(this.bdd.and(tmp, var));
+                            switchProbeSet.setMatch(tmp);
+
+                            BDDTreeNode tmpNode = node.getParent();
+                            while (tmpNode != null) {
+                                var = this.bdd.subtract(tmpNode.getMatch(), matchBdd);
+                                tmpNode.setMatch(var);
+                                tmpNode = tmpNode.getParent();
+                            }
+                        }
+
+
+
+                        // TODO
+                    } else {
+                        // TODO Update network probe set
+                        // networkProbeSet.removeRouter(this);
+                    }
+                }
+            }
+
+        }
+
+
+        // BDDTreeNode node = this.complementTree.query(switchProbeSet.getMatch());
+
+        // TODO
+    /*
+    if (networkProbeSet == null) {
+        switchProbeSet.addRouter(this);
+        probeSets.add(probeSet);
+    } else {
+        networkProbeSet.addRouter(this);
+        probeSets.add(networkProbeSet);
+    }
+    */
+        return bddRules;
+    }
+
+    public ArrayList<NetworkProbeSet> removeRule(String match) {
+        RouterRule rule = this.ruleHashMap.get(match);
+
+        ArrayList<NetworkProbeSet> networkProbeSets = new ArrayList<>();
+        if (rule != null) {
+            for (SwitchProbeSet switchProbeSet:rule.getSwitchProbeSets()) {
+                networkProbeSets.add(switchProbeSet.getNetworkProbeSet());
+                BDDTreeNode node = switchProbeSet.getNode();
+                int var = node.getMatch();
+
+                node.setMatch(this.bdd.getFalse());
+                node.setSwitchProbeSet(null);
+                node.setNetworkProbeSet(null);
+                node = node.getParent();
+
+                while (node != null) {
+
+                    int m = node.getMatch();
+
+                    m = this.bdd.subtract(m, var);
+
+                    node.setMatch(m);
+
+                    node = node.getParent();
+                }
+                this.switchProbeSets.remove(switchProbeSet);
+                this.networkProbeSets.remove(switchProbeSet.getNetworkProbeSet());
+            }
+            this.rules.remove(rule);
+            this.ruleHashMap.remove(match);
+        }
+        return networkProbeSets;
+    }
+
 
     public ArrayList<NetworkProbeSet> getNetworkProbeSets() {
         return networkProbeSets;

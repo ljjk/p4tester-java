@@ -156,7 +156,7 @@ public class P4Tester {
                         router.addLocalIp(nextHop);
                     }
                 } catch (Exception e) {
-
+                    // e.printStackTrace();
                 }
             }
             router.generateProbeSets();
@@ -209,6 +209,7 @@ public class P4Tester {
 
                     NetworkProbeSet networkProbeSet = new NetworkProbeSet(bdd, this);
                     networkProbeSet.addSwitchProbeSet(probeSets.get(j));
+                    probeSets.get(j).setNetworkProbeSet(networkProbeSet);
 
                     for (int k = 0; k < routers.size(); k++) {
                         if (k != i) {
@@ -217,6 +218,8 @@ public class P4Tester {
                                 visitedProbeSets.add(treeNode.getSwitchProbeSet());
                                 networkProbeSet.addSwitchProbeSet(treeNode.getSwitchProbeSet());
                                 target = networkProbeSet.getMatch();
+                                treeNode.setNetworkProbeSet(networkProbeSet);
+                                treeNode.getSwitchProbeSet().setNetworkProbeSet(networkProbeSet);
                             } else {
                                 // routers.get(k).getComplementTree().insertNetworkProbeSet(networkProbeSet);
                             }
@@ -324,15 +327,29 @@ public class P4Tester {
         Router router = this.routerMap.get(routerName);
         if (router != null) {
             ArrayList<NetworkProbeSet> networkProbeSets = router.removeRule(match);
+            // System.out.println(networkProbeSets.size());
             for (NetworkProbeSet networkProbeSet: networkProbeSets) {
-
+                // System.out.println(networkProbeSet == null);
+                if (networkProbeSet.getRouters().size() == 1) {
+                    this.probeSets.remove(networkProbeSet);
+                } else {
+                    networkProbeSet.removeRouter(router);
+                }
             }
         }
     }
 
 
-    public void addRule(String match, String port, String nexthop) {
-
+    public void addRule(String routerName, String match, String port, String nexthop) {
+        Router router = this.routerMap.get(routerName);
+        if (router != null) {
+            ArrayList<SwitchProbeSet> switchProbeSets = router.addRuleWithPriority(match, port, nexthop);
+            for (SwitchProbeSet switchProbeSet:switchProbeSets) {
+                NetworkProbeSet networkProbeSet = new NetworkProbeSet(bdd, this);
+                networkProbeSet.addSwitchProbeSet(switchProbeSet);
+                this.probeSets.add(networkProbeSet);
+            }
+        }
     }
 }
 

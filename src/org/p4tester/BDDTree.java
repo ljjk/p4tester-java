@@ -270,6 +270,30 @@ public class BDDTree {
         }
     }
 
+    public void queryMatchNodesRecur(BDDTreeNode node, int target, ArrayList<BDDTreeNode> nodes) {
+
+        if (node.isLeaf()) {
+            nodes.add(node);
+            return;
+        }
+
+        BDDTreeNode child = node.getChildren().get(0);
+        if (bdd.isOverlap(child.getMatch(), target)) {
+            queryMatchNodesRecur(child, target, nodes);
+        }
+        child = node.getChildren().get(1);
+        if (bdd.isOverlap(child.getMatch(), target)) {
+            queryMatchNodesRecur(child, target, nodes);
+        }
+    }
+
+    public ArrayList<BDDTreeNode> queryMatchNodes(int target) {
+        ArrayList<BDDTreeNode> nodes = new ArrayList<>();
+        if (bdd.isOverlap(root.getMatch(), target)) {
+            queryMatchNodesRecur(root, target, nodes);
+        }
+        return nodes;
+    }
     @Deprecated
     public ArrayList<ProbeSet> getLeafNodes() {
 

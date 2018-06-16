@@ -58,6 +58,20 @@ public class NetworkProbeSet extends ProbeSet {
         return switchProbeSets;
     }
 
+    @Override
+    public void setMatch(int match) {
+        this.match = match;
+        this.update = 0;
+    }
+
+    public void updatePaths() {
+        this.recordRouterMap.clear();
+        for (int i = 0; i < this.tester.getPath().size(); i++) {
+            SwitchPortPair pair = this.tester.getPath().get(i);
+            this.traverse(pair.getRouter(), i);
+        }
+    }
+
     public void traverse(Router router, int i) {
         if (!this.recordRouterMap.keySet().contains(router.getName())) {
             this.recordRouterMap.put(router.getName(), i);
@@ -90,7 +104,7 @@ public class NetworkProbeSet extends ProbeSet {
         this.update = 0;
         this.routers.remove(router);
         // int i = this.recordRouterMap.get(router.getName());
-        this.recordRouterMap.remove(router.getName());
+        // this.recordRouterMap.remove(router.getName());
     }
 
     @Override
@@ -127,6 +141,8 @@ public class NetworkProbeSet extends ProbeSet {
 
             ethernet.setPayload(ip);
 
+
+            this.updatePaths();
 
             for (int i = 0; i < paths.size() - 1; i += 2) {
                 int start = paths.get(i);

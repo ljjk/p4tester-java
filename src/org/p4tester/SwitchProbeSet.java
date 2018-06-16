@@ -5,13 +5,15 @@ public class SwitchProbeSet extends ProbeSet {
     private Router router;
     private RouterRule routerRule;
     private BDDTreeNode node;
+    private int overridePriority;
 
-    SwitchProbeSet(RouterRule rule, int match, Router router) {
+    SwitchProbeSet(RouterRule rule, int match, Router router, int overridePriority) {
         super(match);
         this.routerRule = rule;
         this.router = router;
         this.networkProbeSet = null;
         this.node = null;
+        this.overridePriority = overridePriority;
     }
 
     public Router getRouter() {
