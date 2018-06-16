@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 * @author David Erickson (daviderickson@cs.stanford.edu)
 */
 public abstract class BasePacket implements IPacket {
-    public static final Logger log = LoggerFactory.getLogger(BasePacket.class);
     protected IPacket parent;
     protected IPacket payload;
 

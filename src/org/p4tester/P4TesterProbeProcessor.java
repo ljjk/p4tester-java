@@ -18,24 +18,28 @@ public class P4TesterProbeProcessor implements PacketListener {
     static final int PACKET_COUNT = 1000;
 
 
-    P4TesterProbeProcessor() {
+    P4TesterProbeProcessor(ArrayList<NetworkProbeSet> networkProbeSets) {
+        /*
         try {
             this.nif = new NifSelector().selectNetworkInterface();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        */
 
-        if (nif == null) {
-            return;
-        }
-        System.out.println("Open the device: " + this.nif.getName());
+        //if (nif == null) {
+        //    return;
+        //}
+        //System.out.println("Open the device: " + this.nif.getName());
+        /*
         try {
             this.handle = nif.openLive(65536, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10);
 
         } catch (PcapNativeException e) {
             e.printStackTrace();
         }
-        this.networkProbeSets = null;
+        */
+        this.networkProbeSets = networkProbeSets;
     }
 
     public void loop() {
@@ -55,16 +59,18 @@ public class P4TesterProbeProcessor implements PacketListener {
     }
 
     public void injectProbes() {
+        System.out.println("1");
         if (networkProbeSets != null) {
             for (NetworkProbeSet networkProbeSet:networkProbeSets) {
                 for (Ethernet ethernet:networkProbeSet.generateProbes()) {
-                    try {
-                        this.handle.sendPacket(ethernet.serialize());
-                    } catch (NotOpenException e) {
-                        e.printStackTrace();
-                    } catch (PcapNativeException e) {
-                        e.printStackTrace();
-                    }
+                    System.out.println("1");
+                    // try {
+                    //     this.handle.sendPacket(ethernet.serialize());
+                    //} catch (NotOpenException e) {
+                    //    e.printStackTrace();
+                    //} catch (PcapNativeException e) {
+                    //    e.printStackTrace();
+                    //}
                 }
             }
         }

@@ -147,7 +147,7 @@ public class IPv6 extends BasePacket {
 					for (Map.Entry<IpProtocol, Class<? extends IPacket>> m : entries) {
 						if (m.getValue().equals(this.payload.getClass())) {            		
 							this.setNextHeader(m.getKey());
-							log.warn("Setting previously unset IPv6 'next header' to {} as detected by payload {}", m.getKey(), this.getPayload().getClass().toString());
+							// log.warn("Setting previously unset IPv6 'next header' to {} as detected by payload {}", m.getKey(), this.getPayload().getClass().toString());
 							break;
 						}
 					}

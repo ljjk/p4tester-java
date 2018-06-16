@@ -48,8 +48,6 @@ public class Ethernet extends BasePacket {
         etherTypeClassMap.put(TYPE_RARP, ARP.class);
         etherTypeClassMap.put(TYPE_IPv4, IPv4.class);
         etherTypeClassMap.put(TYPE_IPv6, IPv6.class);
-        etherTypeClassMap.put(TYPE_LLDP, LLDP.class);
-        etherTypeClassMap.put(TYPE_BSN, BSN.class);
     }
 
     protected MacAddress destinationMACAddress;
@@ -279,6 +277,7 @@ public class Ethernet extends BasePacket {
                 payload = clazz.newInstance();
                 this.payload = payload.deserialize(data, bb.position(), bb.limit() - bb.position());
             } catch (PacketParsingException e) {
+                /*
                 if (log.isTraceEnabled()) {
                     log.trace("Failed to parse ethernet packet {}->{}" +
                             " payload as {}, treat as plain ethernet packet",
@@ -286,24 +285,28 @@ public class Ethernet extends BasePacket {
                                           this.destinationMACAddress,
                                           clazz.getClass().getName()});
                     log.trace("Exception from parsing {}", e);
-                }
+                }*/
                 this.payload = new Data(data);
             } catch (InstantiationException e) {
+                /*
                 if (log.isTraceEnabled()) {
                     log.trace("Fail to instantiate class {}, {}",
                               clazz.getClass().getName(), e);
                 }
+                */
                 this.payload = new Data(data);
             } catch (IllegalAccessException e) {
+                /*
                 if (log.isTraceEnabled()) {
                     log.trace("Fail to access class for instantiation {}, {}",
                               clazz.getClass().getName(), e);
-                }
+                }*/
                 this.payload = new Data(data);
             } catch (RuntimeException e) {
+                /*
                 if (log.isTraceEnabled()) {
                     log.trace("Runtime exception during packet parsing {}", e);
-                }
+                }*/
                 this.payload = new Data(data);
             }
         } else {
@@ -427,14 +430,12 @@ public class Ethernet extends BasePacket {
 
         if (pkt instanceof ARP)
             sb.append("arp");
-        else if (pkt instanceof LLDP)
-            sb.append("lldp");
+
         else if (pkt instanceof ICMP)
             sb.append("icmp");
         else if (pkt instanceof IPv4)
             sb.append("ip");
-        else if (pkt instanceof DHCP)
-            sb.append("dhcp");
+
         else  sb.append(this.getEtherType().toString());
 
         sb.append("\ndl_vlan: ");
@@ -456,9 +457,6 @@ public class Ethernet extends BasePacket {
             sb.append(p.getSenderProtocolAddress().toString());
             sb.append("\nnw_dst: ");
             sb.append(p.getTargetProtocolAddress().toString());
-        }
-        else if (pkt instanceof LLDP) {
-            sb.append("lldp packet");
         }
         else if (pkt instanceof ICMP) {
             ICMP icmp = (ICMP) pkt;
@@ -488,18 +486,6 @@ public class Ethernet extends BasePacket {
             sb.append(p.getTrafficClass());
             sb.append("\nnw_proto: ");
             sb.append(p.getNextHeader().toString());
-        }
-        else if (pkt instanceof DHCP) {
-            sb.append("\ndhcp packet");
-        }
-        else if (pkt instanceof Data) {
-            sb.append("\ndata packet");
-        }
-        else if (pkt instanceof LLC) {
-            sb.append("\nllc packet");
-        }
-        else if (pkt instanceof BPDU) {
-            sb.append("\nbpdu packet");
         }
         else sb.append("\nunknown packet");
 

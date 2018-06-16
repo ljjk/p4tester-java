@@ -7,23 +7,8 @@ public class Main {
         P4TesterBDD bdd = new P4TesterBDD(32);
 
 
-
         P4Tester p4tester = new P4Tester(bdd);
-        long start = System.nanoTime();
-        p4tester.probeConstruct();
-        System.out.println(System.nanoTime() - start);
-
-        start = System.nanoTime();
-        p4tester.buildBDDTreeFast();
-        System.out.println(System.nanoTime() - start);
-
-        start = System.nanoTime();
-        p4tester.generateProbes();
-        System.out.println(System.nanoTime() - start);
-
-
-        start = System.nanoTime();
-        p4tester.removeRule("hous", "192.5.166.0/24");
-        System.out.println(System.nanoTime() - start);
+        p4tester.internalTest();
+        // p4tester.start();
     }
 }

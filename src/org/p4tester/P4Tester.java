@@ -5,6 +5,10 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 class SwitchPortPair {
@@ -54,15 +58,23 @@ public class P4Tester {
             "seat"
     };
 
-    private static final String[] STANFORD_CITIES = {
-            "atla",
-            "chic",
-            "hous",
-            "kans",
-            "losa",
-            "newy32aoa",
-            "salt",
-            "wash"
+    private static final String[] STANFORD_ROUTERS = {
+            "bbra",
+            "bbrb",
+            "boza",
+            "bozb",
+            "coza",
+            "cozb",
+            "goza",
+            "gozb",
+            "poza",
+            "pozb",
+            "roza",
+            "rozb",
+            "soza",
+            "sozb",
+            "yoza",
+            "yozb"
     };
 
     P4Tester(P4TesterBDD bdd) {
@@ -169,10 +181,109 @@ public class P4Tester {
         }
     }
 
-    // TODO
-    public void encodeStanford(String router_name, String fileName) {
+
+
+    public void encodeStanford(String routerName, String fileName) {
+        try {
+            InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(fileName));
+            BufferedReader reader = new BufferedReader(inputStreamReader);
+
+            String line;
+            Router router = new Router(bdd, routerName);
+
+            for (int i =0 ;i < 2; i++) {
+                reader.readLine();
+            }
+            String match;
+            String port;
+            String nextHop;
+            while((line = reader.readLine()) != null) {
+                match = null;
+                port = null;
+                nextHop = null;
+
+                if (line.contains(":")) {
+                    continue;
+                }
+
+                try {
+                    String[] info = line.split(" ");
+
+                    for (String i : info) {
+                        if (match == null) {
+                            if (i.contains("/")) {
+                                match = i;
+                            }
+                        } else if (nextHop == null) {
+                            if (i.contains(".")) {
+                                nextHop = i;
+                            }
+                        }
+                        port = i;
+                    }
+
+                    if (match != null && nextHop != null) {
+                        router.addIPv4withPrefix(match, port, nextHop);
+                    } else {
+                        System.out.println(line);
+                    }
+
+
+                } catch (Exception e) {
+
+                }
+            }
+            router.generateProbeSets();
+            this.routers.add(router);
+            routerMap.put(routerName, router);
+            inputStreamReader.close();
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
+
+
+    public void start() {
+        long start = System.nanoTime();
+        probeConstruct();
+        System.out.println(System.nanoTime() - start);
+
+        start = System.nanoTime();
+        buildBDDTreeFast();
+        System.out.println(System.nanoTime() - start);
+
+        start = System.nanoTime();
+        generateProbes();
+        System.out.println(System.nanoTime() - start);
+
+
+        start = System.nanoTime();
+        removeRule("hous", "35.0.0.0/8");
+        System.out.println(System.nanoTime() - start);
+
+        start = System.nanoTime();
+        addRule("hous", "35.0.0.0/8", "1", "2");
+        System.out.println(System.nanoTime() - start);
+
+
+        P4TesterProbeProcessor probeProcessor = new P4TesterProbeProcessor(this.probeSets);
+        ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                // System.out.println(probeSets.size());
+                probeProcessor.injectProbes();
+            }
+        };
+
+        executor.scheduleAtFixedRate(runnable, 1, 1, TimeUnit.SECONDS);
+
+    }
+
+
 
     public ArrayList<Short> getForwardPortList(String name) {
         return new ArrayList<>();
@@ -319,7 +430,9 @@ public class P4Tester {
     }
 
     public void internalTest() {
-        this.encodeInternet2("", "resource/Internet2/hous-show_route_forwarding-table_table_default.xml");
+        // this.encodeInternet2("", "resource/Internet2/hous-show_route_forwarding-table_table_default.xml");
+        this.encodeStanford("bbra", "resource/Stanford_backbone/bbra_rtr_route.txt");
+        System.out.println(this.routers.get(0).getRules().size());
     }
 
 

@@ -416,11 +416,6 @@ public class IPv4 extends BasePacket {
                 throw new RuntimeException("Error parsing payload for IPv4 packet", e);
             }
         } else {
-            if (log.isTraceEnabled() && isFragment) {
-                log.trace("IPv4 fragment detected {}->{}, forward using IP header only",
-                        this.sourceAddress.toString(),
-                        this.destinationAddress.toString());
-            }
             payload = new Data();
         }
         int payloadLength = this.totalLength - this.headerLength * 4;
